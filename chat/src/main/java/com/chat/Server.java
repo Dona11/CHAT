@@ -86,6 +86,19 @@ public class Server implements Runnable{
         
     } 
 
+    public boolean contolloNome(String nick){
+
+        for(int i = 0; i < clientConnessi.size(); i++){
+
+           if(clientConnessi.get(i).nickname.equals(nick)){
+
+                return true;
+           }
+        }
+
+        return false;
+    }
+
     public boolean nomeGiaEsistente(String nick){
 
         for(int i = 0; i < clientConnessi.size() - 1; i++){
@@ -117,13 +130,12 @@ public class Server implements Runnable{
 
         }catch(IOException e){
 
-
         }
     }
     
     public void listaDeiComandi(String nick){
 
-        String comandi = "Digita: /nome + il tuo nuovo nickname per cambiare il tuo attuale\nDigita: /listaComandi per visualizzare tutti i comandi\nDigita: /listaClienti per visualizzare tutti i client connessi\nDigita: /esci per uscire dalla chat\nDigita: @+nickname se vuoi mandare un messaggio privato a qualcuno";
+        String comandi = "Digita: /nome + il tuo nuovo nickname per cambiare il tuo attuale\nDigita: /listaComandi per visualizzare tutti i comandi\nDigita: /listaClienti per visualizzare tutti i client connessi\nDigita: /esci per uscire dalla chat\nDigita: @+nickname se vuoi mandare un messaggio privato a qualcuno\nDigita: /mta+messaggio per mandare un mesagio a tutti";
         
         for(ConnectionHandler connectionHandler: clientConnessi){
 
@@ -210,7 +222,11 @@ public class Server implements Runnable{
 
                         String[] messaggioDiviso = messaggio.split(" ", 2);
 
-                        if(messaggioDiviso.length == 2 && messaggioDiviso[1] != ""){
+                        if(contolloNome(messaggioDiviso[1])){
+
+                            output.println("Nome già utilizzato, reinserire il comando con un altro nome");
+
+                        }else if(messaggioDiviso.length == 2 && messaggioDiviso[1] != ""){
     
                             messaggioTutti(nickname + " ha cambiato nome in " + messaggioDiviso[1], nickname);
                             System.out.println(nickname + " ha cambiato nome in " + messaggioDiviso[1]);
@@ -246,9 +262,17 @@ public class Server implements Runnable{
                     }else if(clientConnessi.size() == 1){
 
                         clientConnessi.get(0).output.println("Sei da solo, ci dispiace!");
-                    }else{
+
+                    }else if(messaggio.startsWith("/mta ")){
     
-                        messaggioTutti(nickname + ": " + messaggio, nickname);
+                        String[] messaggioDiviso = messaggio.split(" ", 2);
+
+                        messaggioTutti(nickname + ": " + messaggioDiviso[1], nickname);
+
+                    }else{
+
+                        output.println("Comando non disponibile");
+                        listaDeiComandi(nickname);
                     }
                 }
     

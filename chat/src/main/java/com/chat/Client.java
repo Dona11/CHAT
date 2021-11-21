@@ -69,7 +69,7 @@ public class Client implements Runnable{
     
                     String messaggio = buffer.readLine();
                     
-                    if(messaggio.equals("/quit")){
+                    if(messaggio.equals("/esci")){
                         output.println(messaggio);
                         buffer.close();
                         chiudi();
