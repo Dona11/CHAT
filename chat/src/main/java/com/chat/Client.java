@@ -9,8 +9,8 @@ import java.net.Socket;
 public class Client implements Runnable{
 
     Socket client;
-    BufferedReader in;
-    PrintWriter out;
+    BufferedReader input;
+    PrintWriter output;
     boolean done;
 
 
@@ -19,32 +19,32 @@ public class Client implements Runnable{
 
         try{
 
-            client = new Socket("127.0.0.1", 9999);
-            out = new PrintWriter(client.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+            client = new Socket("localhost", 5678);
+            output = new PrintWriter(client.getOutputStream(), true);
+            input = new BufferedReader(new InputStreamReader(client.getInputStream()));
             
 
-            InputHandler inHandler = new InputHandler();
-            Thread t = new Thread(inHandler);
+            InputHandler inputHandler = new InputHandler();
+            Thread t = new Thread(inputHandler);
             t.start();
 
-            String inMessage;
-            while((inMessage = in.readLine()) != null){
+            String messaggio;
+            while((messaggio = input.readLine()) != null){
 
-                System.out.println(inMessage);
+                System.out.println(messaggio);
             }
         }catch(IOException e){
-            shutdown();
+            chiudi();
         }
     }
 
-    public void shutdown(){
+    public void chiudi(){
 
         done = true;
         try {
             
-            in.close();
-            out.close();
+            input.close();
+            output.close();
 
             if(!client.isClosed()){
                 client.close();
@@ -55,9 +55,6 @@ public class Client implements Runnable{
         }
     }
 
-    
-
-
     class InputHandler implements Runnable{
 
     
@@ -66,26 +63,26 @@ public class Client implements Runnable{
     
             try{
     
-                BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
+                BufferedReader buffer = new BufferedReader(new InputStreamReader(System.in));
     
                 while(!done){
     
-                    String message = inReader.readLine();
+                    String messaggio = buffer.readLine();
                     
-                    if(message.equals("/quit")){
-                        out.println(message);
-                        inReader.close();
-                        shutdown();
+                    if(messaggio.equals("/quit")){
+                        output.println(messaggio);
+                        buffer.close();
+                        chiudi();
     
                     }else{
     
-                        out.println(message);
+                        output.println(messaggio);
                     }
                 }
     
             }catch(IOException e){
     
-                shutdown();
+                chiudi();
             }
         }
     

@@ -12,14 +12,14 @@ import java.util.concurrent.Executors;
 
 public class Server implements Runnable{
     
-    ArrayList<ConnectionHandler> connections;
+    ArrayList<ConnectionHandler> clientConnessi;
     ServerSocket server;
     boolean done;
     ExecutorService pool;
 
     public Server(){
 
-        connections = new ArrayList<>();
+        clientConnessi = new ArrayList<>();
         done = false;
 
     }
@@ -29,43 +29,43 @@ public class Server implements Runnable{
         
         try {
 
-            server = new ServerSocket(9999);
+            server = new ServerSocket(5678);
             pool = Executors.newCachedThreadPool();
 
             while(!done){
             
                 Socket client = server.accept();
                 ConnectionHandler handler = new ConnectionHandler(client);
-                connections.add(handler);
+                clientConnessi.add(handler);
                 pool.execute(handler);
             }
 
         } catch (IOException e) {
-            shutdown();
+            chiudi();
         }
         
     }
 
-    public void broadcast(String message, String nickClient){
+    public void messaggioTutti(String messaggio, String nickClient){
 
-        for(ConnectionHandler connectionHandler: connections){
+        for(ConnectionHandler connectionHandler: clientConnessi){
 
             if(connectionHandler.nickname != null && connectionHandler.nickname != nickClient){
 
-                    connectionHandler.sendMessage(message);
+                    connectionHandler.inviaMessaggio(messaggio);
             }
         
         }
     }
 
-    public void invioAlSingolo(String nomeDestinatario, String messaggio, String nomeMittente){
+    public void messaggioSingolo(String nomeDestinatario, String messaggio, String nomeMittente){
 
         boolean verifica = false;
-        for(ConnectionHandler connectionHandler: connections){
+        for(ConnectionHandler connectionHandler: clientConnessi){
 
             if(connectionHandler.nickname != null && connectionHandler.nickname.equals(nomeDestinatario)){
 
-                    connectionHandler.sendMessage(nomeMittente + ": " + messaggio);
+                    connectionHandler.inviaMessaggio(nomeMittente + ": " + messaggio);
                     verifica = true;
             }
         
@@ -73,11 +73,11 @@ public class Server implements Runnable{
         
         if(!verifica){
 
-            for(ConnectionHandler connectionHandler: connections){
+            for(ConnectionHandler connectionHandler: clientConnessi){
 
                 if(connectionHandler.nickname != null && connectionHandler.nickname.equals(nomeMittente)){
     
-                        connectionHandler.sendMessage("Ci dispiace il client che stai cercando di raggiungere non esiste.\n");
+                        connectionHandler.inviaMessaggio("Ci dispiace il client che stai cercando di raggiungere non esiste.\n");
                         listaCLientConessi(connectionHandler.nickname);
                 }
             
@@ -88,9 +88,9 @@ public class Server implements Runnable{
 
     public boolean nomeGiaEsistente(String nick){
 
-        for(int i = 0; i < connections.size() - 1; i++){
+        for(int i = 0; i < clientConnessi.size() - 1; i++){
 
-           if(connections.get(i).nickname.equals(nick)){
+           if(clientConnessi.get(i).nickname.equals(nick)){
 
                 return true;
            }
@@ -99,20 +99,20 @@ public class Server implements Runnable{
         return false;
     }
 
-    public void shutdown(){
+    public void chiudi(){
 
         try{
 
             done = true;
-            pool.shutdown();
+            pool.shutdown();;
             if(!server.isClosed()){
 
                 server.close();
             }
 
-            for(ConnectionHandler connectionHandler: connections){
+            for(ConnectionHandler connectionHandler: clientConnessi){
 
-                connectionHandler.shutdown();
+                connectionHandler.chiudi();
             }
 
         }catch(IOException e){
@@ -121,11 +121,28 @@ public class Server implements Runnable{
         }
     }
     
+    public void listaDeiComandi(String nick){
+
+        String comandi = "Digita: /nome + il tuo nuovo nickname per cambiare il tuo attuale\nDigita: /listaComandi per visualizzare tutti i comandi\nDigita: /listaClienti per visualizzare tutti i client connessi\nDigita: /esci per uscire dalla chat\nDigita: @+nickname se vuoi mandare un messaggio privato a qualcuno";
+        
+        for(ConnectionHandler connectionHandler: clientConnessi){
+
+            if(connectionHandler.nickname != null){
+
+                if(connectionHandler.nickname.equals(nick)){
+
+                    connectionHandler.inviaMessaggio(comandi);
+                }
+            }
+
+        }
+    }
+
     public void listaCLientConessi(String nick){
 
         String lista = "Lista client connessi: ";
 
-        for(ConnectionHandler connectionHandler: connections){
+        for(ConnectionHandler connectionHandler: clientConnessi){
 
             if(connectionHandler.nickname != null){
 
@@ -134,13 +151,13 @@ public class Server implements Runnable{
 
         }
         
-        for(ConnectionHandler connectionHandler: connections){
+        for(ConnectionHandler connectionHandler: clientConnessi){
 
             if(connectionHandler.nickname != null){
 
                 if(connectionHandler.nickname.equals(nick)){
 
-                    connectionHandler.sendMessage(lista);
+                    connectionHandler.inviaMessaggio(lista);
                 }
             }
 
@@ -150,8 +167,8 @@ public class Server implements Runnable{
     class ConnectionHandler implements Runnable{
     
         private Socket client;
-        private BufferedReader in;
-        private PrintWriter out;
+        private BufferedReader input;
+        private PrintWriter output;
         private String nickname;
     
         public ConnectionHandler(Socket client){
@@ -165,86 +182,91 @@ public class Server implements Runnable{
     
             try {
                 
-                out = new PrintWriter(client.getOutputStream(), true);
-                in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                output = new PrintWriter(client.getOutputStream(), true);
+                input = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 
                 
                 do {
                     
-                    out.println("Please enter a nickname: ");
-                    nickname = in.readLine();
+                    output.println("Inserisci un nickname: ");
+                    nickname = input.readLine();
 
                     if(nomeGiaEsistente(nickname)){
 
-                        out.print("Il nome è già esistente\n");
+                        output.print("Il nome è già esistente\n");
                     }
 
                 } while (nomeGiaEsistente(nickname));
 
-                System.out.println(nickname + " connected!");
-                broadcast(nickname + " joined the chat!", nickname);
+                System.out.println(nickname + " si è connesso!");
+                messaggioTutti(nickname + " si è unito alla chat!", nickname);
 
                 listaCLientConessi(nickname);
 
-                String message;
-                while((message = in.readLine()) != null ){
+                String messaggio;
+                while((messaggio = input.readLine()) != null ){
     
-                    if(message.startsWith("/nick ")){
+                    if(messaggio.startsWith("/nome ")){
+
+                        String[] messaggioDiviso = messaggio.split(" ", 2);
+
+                        if(messaggioDiviso.length == 2 && messaggioDiviso[1] != ""){
     
-                        String[] messageSplit = message.split(" ", 2);
-                        if(messageSplit.length == 2){
-    
-                            broadcast(nickname + " renamed themselves to " + messageSplit[1], nickname);
-                            System.out.println(nickname + " renamed themselves to " + messageSplit[1]);
-                            nickname = messageSplit[1];
-                            out.println("Succesfully changed nickname to " + nickname);
+                            messaggioTutti(nickname + " ha cambiato nome in " + messaggioDiviso[1], nickname);
+                            System.out.println(nickname + " ha cambiato nome in " + messaggioDiviso[1]);
+                            nickname = messaggioDiviso[1];
+                            output.println("Nome correttamente cambiato in " + nickname);
                         
                         }else{
     
-                            out.println("No nickname provided!");
+                            output.println("Nessun nickname inserito!");
                         }
-    
-                    }else if(message.startsWith("/list")){
+
+                    }else if(messaggio.startsWith("/listaComandi")){
+
+                        listaDeiComandi(nickname);
+
+                    }else if(messaggio.startsWith("/listaClient")){
 
                         listaCLientConessi(nickname);
 
-                    }else if(message.startsWith("@")){
+                    }else if(messaggio.startsWith("@")){
 
-                        String nomeDestinatario = message.substring(1, message.indexOf(" "));
-                        String messaggioDaInviare = message.substring(message.indexOf(" "));
-                        invioAlSingolo(nomeDestinatario, messaggioDaInviare, nickname);
+                        String nomeDestinatario = messaggio.substring(1, messaggio.indexOf(" "));
+                        String messaggioDaInviare = messaggio.substring(messaggio.indexOf(" "));
+                        messaggioSingolo(nomeDestinatario, messaggioDaInviare, nickname);
 
-                    }else if(message.startsWith("/quit")){
+                    }else if(messaggio.startsWith("/esci")){
     
-                        System.out.println(nickname + " left the chat!");
-                        broadcast(nickname + " left the chat!", nickname);
-                        shutdown();
-                        connections.remove(this);
+                        System.out.println(nickname + " è uscito dalla chat!");
+                        messaggioTutti(nickname + " è uscito dalla chat!", nickname);
+                        chiudi();
+                        clientConnessi.remove(this);
 
-                    }else if(connections.size() == 1){
+                    }else if(clientConnessi.size() == 1){
 
-                        connections.get(0).out.println("Sei da solo, ci dispiace!");
+                        clientConnessi.get(0).output.println("Sei da solo, ci dispiace!");
                     }else{
     
-                        broadcast(nickname + ": " + message, nickname);
+                        messaggioTutti(nickname + ": " + messaggio, nickname);
                     }
                 }
     
             } catch (IOException e) {
-                shutdown();
+                chiudi();
             }
         }
     
-        public void sendMessage(String message){
+        public void inviaMessaggio(String message){
             
-            out.println(message);
+            output.println(message);
         }
     
-        public void shutdown(){
+        public void chiudi(){
     
             try{
-                in.close();
-                out.close();
+                input.close();
+                output.close();
     
                 if(!client.isClosed()){
     
